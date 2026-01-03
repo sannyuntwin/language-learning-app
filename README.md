@@ -1,4 +1,4 @@
-# Flutter Application 1
+# LLA
 
 A Flutter application with custom Myanmar font support and local database functionality.
 
@@ -37,7 +37,7 @@ A Flutter application with custom Myanmar font support and local database functi
 1. Clone the repository:
    ```bash
    git clone <repository-url>
-   cd flutter_application_1
+   cd lla
    ```
 
 2. Install dependencies:

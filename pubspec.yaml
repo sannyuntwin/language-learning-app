@@ -1,5 +1,5 @@
-name: flutter_application_1
-description: "A new Flutter project."
+name: lla
+description: "LLA - Language Learning Application for Myanmar language education."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -40,6 +40,9 @@ dependencies:
   sqlite3_flutter_libs: ^0.5.18
   path_provider: ^2.1.4
   path: ^1.9.0
+  
+  # Text-to-Speech
+  flutter_tts: ^3.8.5
 
 dev_dependencies:
   flutter_test:

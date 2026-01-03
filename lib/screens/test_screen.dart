@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
 import '../models/language.dart';
 import '../services/tts_service.dart';
+import '../widgets/drag_drop_widgets.dart';
+import '../theme/app_theme.dart';
 
 class TestScreen extends StatefulWidget {
   final Test test;
   final Lesson lesson;
+  final Language? language;
   final VoidCallback onTestComplete;
 
   const TestScreen({
     super.key,
     required this.test,
     required this.lesson,
+    this.language,
     required this.onTestComplete,
   });
 
@@ -28,8 +32,8 @@ class _TestScreenState extends State<TestScreen> {
   final TTSService _ttsService = TTSService();
   
   // For sentence building and word order
-  List<String> _userSentenceWords = [];
-  List<String> _availableWords = [];
+  final List<String> _userSentenceWords = [];
+  final List<String> _availableWords = [];
 
   @override
   void initState() {
@@ -43,30 +47,100 @@ class _TestScreenState extends State<TestScreen> {
     final isLastQuestion = _currentQuestionIndex == widget.test.questions.length - 1;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('${widget.lesson.icon} Test'),
-        backgroundColor: Colors.green,
-        foregroundColor: Colors.white,
-        elevation: 2,
-        actions: [
+      body: Container(
+        decoration: AppTheme.screenGradient,
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Streamlined header
+              _buildStreamlinedHeader(),
+              
+              // Compact progress indicator
+              _buildCompactProgressIndicator(),
+              
+              // Main content - optimized spacing
+              Expanded(
+                child: Padding(
+                  padding: AppTheme.getScreenPadding(),
+                  child: _buildQuestionWidget(currentQuestion),
+                ),
+              ),
+              
+              // Compact answer section
+              _buildCompactAnswerSection(currentQuestion, isLastQuestion),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStreamlinedHeader() {
+    return Container(
+      padding: AppTheme.getScreenPadding(),
+      margin: const EdgeInsets.all(AppTheme.spaceS),
+      decoration: AppTheme.questionCardDecoration,
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () => Navigator.of(context).pop(),
+            child: Container(
+              padding: const EdgeInsets.all(AppTheme.spaceS),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(AppTheme.buttonRadius),
+              ),
+              child: Icon(
+                Icons.close,
+                color: Colors.grey.shade700,
+                size: 20,
+              ),
+            ),
+          ),
+          const SizedBox(width: AppTheme.spaceM),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${widget.lesson.icon} ${widget.lesson.title}',
+                  style: AppTheme.titleTextStyle,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: AppTheme.spaceXS),
+                Text(
+                  'Question ${_currentQuestionIndex + 1} of ${widget.test.questions.length}',
+                  style: AppTheme.captionTextStyle,
+                ),
+              ],
+            ),
+          ),
           Container(
-            margin: const EdgeInsets.only(right: 16),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppTheme.spaceM, 
+              vertical: AppTheme.spaceS
+            ),
             decoration: BoxDecoration(
-              color: Colors.yellow.shade100,
+              gradient: const LinearGradient(
+                colors: [Colors.green, Color(0xFF2E7D32)],
+              ),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.star, size: 16, color: Colors.orange.shade600),
-                const SizedBox(width: 4),
+                Icon(
+                  Icons.local_fire_department,
+                  size: 16,
+                  color: Colors.white,
+                ),
+                const SizedBox(width: AppTheme.spaceXS),
                 Text(
                   '$_score',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.orange.shade800,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
                   ),
                 ),
               ],
@@ -74,411 +148,1264 @@ class _TestScreenState extends State<TestScreen> {
           ),
         ],
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Colors.white,
-              Colors.yellow.shade50,
+    );
+  }
+
+  Widget _buildCompactProgressIndicator() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: AppTheme.spaceS),
+      padding: const EdgeInsets.all(AppTheme.spaceM),
+      decoration: AppTheme.questionCardDecoration,
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppTheme.spaceS, 
+                  vertical: AppTheme.spaceXS
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade50,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: Colors.green.shade200,
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.flag,
+                      size: 14,
+                      color: AppTheme.successColor,
+                    ),
+                    const SizedBox(width: AppTheme.spaceXS),
+                    Text(
+                      '${_currentQuestionIndex + 1}/${widget.test.questions.length}',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.successColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Row(
+                children: List.generate(3, (index) {
+                  return Container(
+                    margin: const EdgeInsets.only(left: AppTheme.spaceXS),
+                    child: Icon(
+                      index < _correctAnswers ? Icons.favorite : Icons.favorite_border,
+                      color: index < _correctAnswers ? Colors.red : Colors.grey.shade300,
+                      size: 20,
+                    ),
+                  );
+                }),
+              ),
             ],
           ),
-        ),
-        child: _buildTestContent(currentQuestion, isLastQuestion),
-      ),
-    );
-  }
-
-  Widget _buildTestContent(TestQuestion currentQuestion, bool isLastQuestion) {
-    return Padding(
-      padding: const EdgeInsets.all(20.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Progress indicator
-          _buildProgressIndicator(),
-          const SizedBox(height: 20),
-
-          // Question
-          Expanded(
-            child: _buildQuestionWidget(currentQuestion),
+          const SizedBox(height: AppTheme.spaceM),
+          Container(
+            width: double.infinity,
+            height: 6,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade200,
+              borderRadius: BorderRadius.circular(3),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(3),
+              child: LinearProgressIndicator(
+                value: (_currentQuestionIndex + 1) / widget.test.questions.length,
+                backgroundColor: Colors.transparent,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  AppTheme.successColor,
+                ),
+              ),
+            ),
           ),
-
-          // Answer and Next button
-          _buildAnswerSection(currentQuestion, isLastQuestion),
         ],
       ),
-    );
-  }
-
-  Widget _buildProgressIndicator() {
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Question ${_currentQuestionIndex + 1} of ${widget.test.questions.length}',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey.shade700,
-              ),
-            ),
-            Text(
-              '${(_correctAnswers / widget.test.questions.length * 100).round()}% correct',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.green,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        LinearProgressIndicator(
-          value: (_currentQuestionIndex + 1) / widget.test.questions.length,
-          backgroundColor: Colors.grey.shade200,
-          valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
-        ),
-      ],
     );
   }
 
   Widget _buildQuestionWidget(TestQuestion question) {
     if (question is MultipleChoiceQuestion) {
-      return _buildMultipleChoiceQuestion(question);
+      return _buildEnhancedMultipleChoiceQuestion(question);
     } else if (question is TranslationQuestion) {
-      return _buildTranslationQuestion(question);
+      return _buildEnhancedTranslationQuestion(question);
     } else if (question is FillInBlankQuestion) {
-      return _buildFillInBlankQuestion(question);
+      return _buildEnhancedFillInBlankQuestion(question);
     } else if (question is ListeningQuestion) {
-      return _buildListeningQuestion(question);
+      return _buildEnhancedListeningQuestion(question);
     } else if (question is SentenceBuildingQuestion) {
-      return _buildSentenceBuildingQuestion(question);
+      return _buildEnhancedSentenceBuildingQuestion(question);
     } else if (question is WordOrderQuestion) {
-      return _buildWordOrderQuestion(question);
+      return _buildEnhancedWordOrderQuestion(question);
     }
     return const Text('Unknown question type');
   }
 
-  Widget _buildMultipleChoiceQuestion(MultipleChoiceQuestion question) {
-    return Card(
-      elevation: 8,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Padding(
-        padding: const EdgeInsets.all(25),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              question.question,
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                color: Colors.green,
-              ),
+  Widget _buildEnhancedMultipleChoiceQuestion(MultipleChoiceQuestion question) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Question text - optimized
+        Container(
+          width: double.infinity,
+          padding: AppTheme.getCardPadding(),
+          decoration: AppTheme.questionCardDecoration,
+          child: Text(
+            question.question,
+            style: AppTheme.questionTextStyle,
+          ),
+        ),
+        const SizedBox(height: AppTheme.spaceM),
+        
+        // Drop target - streamlined
+        Container(
+          width: double.infinity,
+          height: 60,
+          decoration: AppTheme.dropTargetDecoration.copyWith(
+            border: Border.all(
+              color: _selectedAnswer != null 
+                  ? AppTheme.successColor 
+                  : Colors.grey.shade300,
+              width: 2,
             ),
-            const SizedBox(height: 30),
-            Expanded(
-              child: ListView.builder(
-                itemCount: question.options.length,
-                itemBuilder: (context, index) {
-                  final option = question.options[index];
-                  final isSelected = _selectedAnswer == option;
-                  final isCorrect = index == question.correctAnswerIndex;
-                  
-                  Color buttonColor = Colors.grey.shade100;
-                  if (_showExplanation) {
-                    if (isCorrect) {
-                      buttonColor = Colors.green.shade100;
-                    } else if (isSelected && !isCorrect) {
-                      buttonColor = Colors.red.shade100;
-                    }
-                  } else if (isSelected) {
-                    buttonColor = Colors.yellow.shade100;
-                  }
-
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    child: ElevatedButton(
-                      onPressed: _showExplanation ? null : () {
-                        setState(() {
-                          _selectedAnswer = option;
-                        });
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: buttonColor,
-                        foregroundColor: Colors.black87,
-                        padding: const EdgeInsets.all(16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(15),
-                          side: BorderSide(
-                            color: isSelected ? Colors.green : Colors.transparent,
+          ),
+          child: DragTarget<String>(
+            onWillAccept: (data) => !_showExplanation,
+            onAccept: (data) {
+              if (!_showExplanation) {
+                setState(() {
+                  _selectedAnswer = data;
+                });
+              }
+            },
+            builder: (context, candidateData, rejectedData) {
+              return Center(
+                child: _selectedAnswer != null
+                    ? Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppTheme.spaceS,
+                          vertical: AppTheme.spaceXS,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppTheme.successColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(AppTheme.buttonRadius),
+                          border: Border.all(
+                            color: AppTheme.successColor,
                             width: 2,
                           ),
                         ),
-                        elevation: _showExplanation ? 0 : 2,
-                      ),
-                      child: Row(
+                        child: Text(
+                          _selectedAnswer!,
+                          style: AppTheme.wordTextStyle,
+                        ),
+                      )
+                    : Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Container(
-                            width: 30,
-                            height: 30,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: isSelected ? Colors.green : Colors.grey.shade300,
-                            ),
-                            child: Center(
-                              child: Text(
-                                String.fromCharCode(65 + index), // A, B, C, D
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: isSelected ? Colors.white : Colors.black87,
-                                ),
-                              ),
-                            ),
+                          Icon(
+                            Icons.drag_indicator,
+                            color: Colors.grey.shade400,
+                            size: 24,
                           ),
-                          const SizedBox(width: 15),
-                          Expanded(
-                            child: Text(
-                              option,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
+                          const SizedBox(height: AppTheme.spaceXS),
+                          Text(
+                            'Drop answer here',
+                            style: AppTheme.captionTextStyle,
                           ),
-                          if (_showExplanation && isCorrect)
-                            Icon(Icons.check, color: Colors.green.shade600),
-                          if (_showExplanation && isSelected && !isCorrect)
-                            Icon(Icons.close, color: Colors.red.shade600),
                         ],
                       ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
+              );
+            },
+          ),
         ),
-      ),
+        const SizedBox(height: AppTheme.spaceM),
+        
+        // Draggable options - compact
+        Expanded(
+          child: ListView.builder(
+            itemCount: question.options.length,
+            itemBuilder: (context, index) {
+              final option = question.options[index];
+              final isCorrect = index == question.correctAnswerIndex;
+              final isSelected = _selectedAnswer == option;
+              
+              return Container(
+                margin: const EdgeInsets.only(bottom: AppTheme.spaceS),
+                child: DraggableWordTile(
+                  word: option,
+                  isUsed: _showExplanation ? false : isSelected,
+                  isCorrect: _showExplanation && isCorrect,
+                  showResult: _showExplanation,
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 
-  Widget _buildTranslationQuestion(TranslationQuestion question) {
-    return Card(
-      elevation: 8,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Padding(
-        padding: const EdgeInsets.all(25),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              question.question,
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                color: Colors.green,
+  Widget _buildEnhancedTranslationQuestion(TranslationQuestion question) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Question text - optimized
+        Container(
+          width: double.infinity,
+          padding: AppTheme.getCardPadding(),
+          decoration: AppTheme.questionCardDecoration,
+          child: Text(
+            question.question,
+            style: AppTheme.questionTextStyle,
+          ),
+        ),
+        const SizedBox(height: AppTheme.spaceM),
+        
+        // Word to translate - streamlined
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(AppTheme.spaceL),
+          decoration: AppTheme.getQuestionTypeDecoration('translation'),
+          child: Column(
+            children: [
+              Text(
+                'Translate this word:',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey.shade700,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-            ),
-            const SizedBox(height: 20),
-            Container(
-              padding: const EdgeInsets.all(15),
-              decoration: BoxDecoration(
-                color: Colors.yellow.shade50,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.yellow.shade200),
-              ),
-              child: Text(
+              const SizedBox(height: AppTheme.spaceS),
+              Text(
                 question.word,
                 style: const TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
-                  color: Colors.green,
+                  color: AppTheme.translationColor,
                 ),
                 textAlign: TextAlign.center,
               ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppTheme.spaceM),
+        
+        // Drop target - streamlined
+        Container(
+          width: double.infinity,
+          height: 60,
+          decoration: AppTheme.dropTargetDecoration.copyWith(
+            border: Border.all(
+              color: _selectedAnswer != null 
+                  ? AppTheme.successColor 
+                  : Colors.grey.shade300,
+              width: 2,
             ),
-            const SizedBox(height: 30),
-            Text(
-              'Select the correct translation:',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey.shade700,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 20),
-            Expanded(
-              child: ListView.builder(
-                itemCount: question.translations.length,
-                itemBuilder: (context, index) {
-                  final translation = question.translations[index];
-                  final isSelected = _selectedAnswer == translation;
-                  final isCorrect = index == question.correctAnswerIndex;
-                  
-                  Color buttonColor = Colors.grey.shade100;
-                  if (_showExplanation) {
-                    if (isCorrect) {
-                      buttonColor = Colors.green.shade100;
-                    } else if (isSelected && !isCorrect) {
-                      buttonColor = Colors.red.shade100;
-                    }
-                  } else if (isSelected) {
-                    buttonColor = Colors.yellow.shade100;
-                  }
-
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    child: ElevatedButton(
-                      onPressed: _showExplanation ? null : () {
-                        setState(() {
-                          _selectedAnswer = translation;
-                        });
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: buttonColor,
-                        foregroundColor: Colors.black87,
-                        padding: const EdgeInsets.all(16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(15),
-                          side: BorderSide(
-                            color: isSelected ? Colors.green : Colors.transparent,
+          ),
+          child: DragTarget<String>(
+            onWillAccept: (data) => !_showExplanation,
+            onAccept: (data) {
+              if (!_showExplanation) {
+                setState(() {
+                  _selectedAnswer = data;
+                });
+              }
+            },
+            builder: (context, candidateData, rejectedData) {
+              return Center(
+                child: _selectedAnswer != null
+                    ? Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppTheme.spaceS,
+                          vertical: AppTheme.spaceXS,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppTheme.successColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(AppTheme.buttonRadius),
+                          border: Border.all(
+                            color: AppTheme.successColor,
                             width: 2,
                           ),
                         ),
-                        elevation: _showExplanation ? 0 : 2,
-                      ),
-                      child: Row(
+                        child: Text(
+                          _selectedAnswer!,
+                          style: AppTheme.wordTextStyle,
+                        ),
+                      )
+                    : Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Container(
-                            width: 30,
-                            height: 30,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: isSelected ? Colors.green : Colors.grey.shade300,
-                            ),
-                            child: Center(
-                              child: Text(
-                                String.fromCharCode(65 + index), // A, B, C, D
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: isSelected ? Colors.white : Colors.black87,
-                                ),
-                              ),
-                            ),
+                          Icon(
+                            Icons.drag_indicator,
+                            color: Colors.grey.shade400,
+                            size: 24,
                           ),
-                          const SizedBox(width: 15),
-                          Expanded(
-                            child: Text(
-                              translation,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
+                          const SizedBox(height: AppTheme.spaceXS),
+                          Text(
+                            'Drop translation here',
+                            style: AppTheme.captionTextStyle,
                           ),
-                          if (_showExplanation && isCorrect)
-                            Icon(Icons.check, color: Colors.green.shade600),
-                          if (_showExplanation && isSelected && !isCorrect)
-                            Icon(Icons.close, color: Colors.red.shade600),
                         ],
                       ),
-                    ),
-                  );
-                },
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: AppTheme.spaceM),
+        
+        // Draggable translations - compact
+        Expanded(
+          child: ListView.builder(
+            itemCount: question.translations.length,
+            itemBuilder: (context, index) {
+              final translation = question.translations[index];
+              final isCorrect = index == question.correctAnswerIndex;
+              final isSelected = _selectedAnswer == translation;
+              
+              return Container(
+                margin: const EdgeInsets.only(bottom: AppTheme.spaceS),
+                child: DraggableWordTile(
+                  word: translation,
+                  isUsed: _showExplanation ? false : isSelected,
+                  isCorrect: _showExplanation && isCorrect,
+                  showResult: _showExplanation,
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEnhancedFillInBlankQuestion(FillInBlankQuestion question) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Question text - optimized
+        Container(
+          width: double.infinity,
+          padding: AppTheme.getCardPadding(),
+          decoration: AppTheme.questionCardDecoration,
+          child: Text(
+            question.question,
+            style: AppTheme.questionTextStyle,
+          ),
+        ),
+        const SizedBox(height: AppTheme.spaceM),
+        
+        // Sentence with blank to fill
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(AppTheme.spaceL),
+          decoration: AppTheme.getQuestionTypeDecoration('fill_blank'),
+          child: Column(
+            children: [
+              Text(
+                'Complete the sentence:',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey.shade700,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: AppTheme.spaceS),
+              _buildSentenceWithBlank(question.sentence, question.correctWord),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppTheme.spaceM),
+        
+        // Drop target - streamlined
+        Container(
+          width: double.infinity,
+          height: 60,
+          decoration: AppTheme.dropTargetDecoration.copyWith(
+            border: Border.all(
+              color: _selectedAnswer != null 
+                  ? AppTheme.successColor 
+                  : Colors.grey.shade300,
+              width: 2,
+            ),
+          ),
+          child: DragTarget<String>(
+            onWillAccept: (data) => !_showExplanation,
+            onAccept: (data) {
+              if (!_showExplanation) {
+                setState(() {
+                  _selectedAnswer = data;
+                });
+              }
+            },
+            builder: (context, candidateData, rejectedData) {
+              return Center(
+                child: _selectedAnswer != null
+                    ? Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppTheme.spaceS,
+                          vertical: AppTheme.spaceXS,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppTheme.successColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(AppTheme.buttonRadius),
+                          border: Border.all(
+                            color: AppTheme.successColor,
+                            width: 2,
+                          ),
+                        ),
+                        child: Text(
+                          _selectedAnswer!,
+                          style: AppTheme.wordTextStyle,
+                        ),
+                      )
+                    : Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.drag_indicator,
+                            color: Colors.grey.shade400,
+                            size: 24,
+                          ),
+                          const SizedBox(height: AppTheme.spaceXS),
+                          Text(
+                            'Drop answer here',
+                            style: AppTheme.captionTextStyle,
+                          ),
+                        ],
+                      ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: AppTheme.spaceM),
+        
+        // Draggable options - compact
+        Expanded(
+          child: ListView.builder(
+            itemCount: question.options.length,
+            itemBuilder: (context, index) {
+              final option = question.options[index];
+              final isCorrect = option == question.correctWord;
+              final isSelected = _selectedAnswer == option;
+              
+              return Container(
+                margin: const EdgeInsets.only(bottom: AppTheme.spaceS),
+                child: DraggableWordTile(
+                  word: option,
+                  isUsed: _showExplanation ? false : isSelected,
+                  isCorrect: _showExplanation && isCorrect,
+                  showResult: _showExplanation,
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSentenceWithBlank(String sentence, String correctWord) {
+    // Find the blank position (underscore)
+    final parts = sentence.split('_____');
+    
+    if (parts.length == 2) {
+      return RichText(
+        textAlign: TextAlign.center,
+        text: TextSpan(
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF1E293B),
+            height: 1.4,
+          ),
+          children: [
+            TextSpan(
+              text: parts[0],
+              style: const TextStyle(
+                color: Color(0xFF1E293B),
+              ),
+            ),
+            TextSpan(
+              text: '_____',
+              style: const TextStyle(
+                color: AppTheme.fillBlankColor,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            TextSpan(
+              text: parts[1],
+              style: const TextStyle(
+                color: Color(0xFF1E293B),
               ),
             ),
           ],
         ),
+      );
+    } else {
+      // Fallback if no blank found
+      return Text(
+        sentence,
+        style: const TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+          color: Color(0xFF1E293B),
+        ),
+        textAlign: TextAlign.center,
+      );
+    }
+  }
+
+  Widget _buildEnhancedListeningQuestion(ListeningQuestion question) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Question text - optimized
+        Container(
+          width: double.infinity,
+          padding: AppTheme.getCardPadding(),
+          decoration: AppTheme.questionCardDecoration,
+          child: Text(
+            question.question,
+            style: AppTheme.questionTextStyle,
+          ),
+        ),
+        const SizedBox(height: AppTheme.spaceM),
+        
+        // Audio player - streamlined
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(AppTheme.spaceL),
+          decoration: AppTheme.getQuestionTypeDecoration('listening'),
+          child: Column(
+            children: [
+              Icon(
+                Icons.volume_up,
+                size: 32,
+                color: AppTheme.listeningColor,
+              ),
+              const SizedBox(height: AppTheme.spaceS),
+              ElevatedButton.icon(
+                onPressed: () => _ttsService.speak(question.audioText, widget.language?.code ?? 'en'),
+                icon: const Icon(Icons.play_arrow, size: 20),
+                label: const Text(
+                  'Play Audio', 
+                  style: TextStyle(
+                    fontSize: 14, 
+                    fontWeight: FontWeight.w600
+                  )
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.listeningColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppTheme.spaceM,
+                    vertical: AppTheme.spaceS,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppTheme.buttonRadius),
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppTheme.spaceS),
+              Text(
+                'What did you hear?',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppTheme.listeningColor,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppTheme.spaceM),
+        
+        // Drop target - streamlined
+        Container(
+          width: double.infinity,
+          height: 60,
+          decoration: AppTheme.dropTargetDecoration.copyWith(
+            border: Border.all(
+              color: _selectedAnswer != null 
+                  ? AppTheme.successColor 
+                  : Colors.grey.shade300,
+              width: 2,
+            ),
+          ),
+          child: DragTarget<String>(
+            onWillAccept: (data) => !_showExplanation,
+            onAccept: (data) {
+              if (!_showExplanation) {
+                setState(() {
+                  _selectedAnswer = data;
+                });
+              }
+            },
+            builder: (context, candidateData, rejectedData) {
+              return Center(
+                child: _selectedAnswer != null
+                    ? Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppTheme.spaceS,
+                          vertical: AppTheme.spaceXS,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppTheme.successColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(AppTheme.buttonRadius),
+                          border: Border.all(
+                            color: AppTheme.successColor,
+                            width: 2,
+                          ),
+                        ),
+                        child: Text(
+                          _selectedAnswer!,
+                          style: AppTheme.wordTextStyle,
+                        ),
+                      )
+                    : Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.drag_indicator,
+                            color: Colors.grey.shade400,
+                            size: 24,
+                          ),
+                          const SizedBox(height: AppTheme.spaceXS),
+                          Text(
+                            'Drag answer here',
+                            style: AppTheme.captionTextStyle,
+                          ),
+                        ],
+                      ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: AppTheme.spaceM),
+        
+        // Draggable options - compact
+        Expanded(
+          child: ListView.builder(
+            itemCount: question.options.length,
+            itemBuilder: (context, index) {
+              final option = question.options[index];
+              final isCorrect = index == question.correctAnswerIndex;
+              final isSelected = _selectedAnswer == option;
+              
+              return Container(
+                margin: const EdgeInsets.only(bottom: AppTheme.spaceS),
+                child: DraggableWordTile(
+                  word: option,
+                  isUsed: _showExplanation ? false : isSelected,
+                  isCorrect: _showExplanation && isCorrect,
+                  showResult: _showExplanation,
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEnhancedSentenceBuildingQuestion(SentenceBuildingQuestion question) {
+    return _buildEnhancedSentenceQuestion(question, question.correctSentence, question.wordOptions);
+  }
+
+  Widget _buildEnhancedWordOrderQuestion(WordOrderQuestion question) {
+    return _buildEnhancedSentenceQuestion(question, question.correctOrder, question.scrambledWords);
+  }
+
+  Widget _buildEnhancedQuestionSkeleton(TestQuestion question, bool Function(String) isCorrect, String? Function() getSelectedAnswer) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Question text - optimized
+        Container(
+          width: double.infinity,
+          padding: AppTheme.getCardPadding(),
+          decoration: AppTheme.questionCardDecoration,
+          child: Text(
+            question.question,
+            style: AppTheme.questionTextStyle,
+          ),
+        ),
+        const SizedBox(height: AppTheme.spaceM),
+        
+        // Drop target - streamlined
+        Container(
+          width: double.infinity,
+          height: 60,
+          decoration: AppTheme.dropTargetDecoration.copyWith(
+            border: Border.all(
+              color: getSelectedAnswer() != null 
+                  ? AppTheme.successColor 
+                  : Colors.grey.shade300,
+              width: 2,
+            ),
+          ),
+          child: DragTarget<String>(
+            onWillAccept: (data) => !_showExplanation,
+            onAccept: (data) {
+              if (!_showExplanation) {
+                setState(() {
+                  _selectedAnswer = data;
+                });
+              }
+            },
+            builder: (context, candidateData, rejectedData) {
+              return Center(
+                child: getSelectedAnswer() != null
+                    ? Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppTheme.spaceS,
+                          vertical: AppTheme.spaceXS,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppTheme.successColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(AppTheme.buttonRadius),
+                          border: Border.all(
+                            color: AppTheme.successColor,
+                            width: 2,
+                          ),
+                        ),
+                        child: Text(
+                          getSelectedAnswer()!,
+                          style: AppTheme.wordTextStyle,
+                        ),
+                      )
+                    : Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.drag_indicator,
+                            color: Colors.grey.shade400,
+                            size: 24,
+                          ),
+                          const SizedBox(height: AppTheme.spaceXS),
+                          Text(
+                            'Drag answer here',
+                            style: AppTheme.captionTextStyle,
+                          ),
+                        ],
+                      ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: AppTheme.spaceM),
+        
+        // Draggable options - compact
+        Expanded(
+          child: ListView.builder(
+            itemCount: (question as dynamic).options.length,
+            itemBuilder: (context, index) {
+              final option = (question as dynamic).options[index];
+              final isCorrectOption = isCorrect(option);
+              final isSelected = getSelectedAnswer() == option;
+              
+              return Container(
+                margin: const EdgeInsets.only(bottom: AppTheme.spaceS),
+                child: DraggableWordTile(
+                  word: option,
+                  isUsed: _showExplanation ? false : isSelected,
+                  isCorrect: _showExplanation && isCorrectOption,
+                  showResult: _showExplanation,
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEnhancedSentenceQuestion(TestQuestion question, List<String> correctWords, List<String> wordOptions) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Question text - optimized
+        Container(
+          width: double.infinity,
+          padding: AppTheme.getCardPadding(),
+          decoration: AppTheme.questionCardDecoration,
+          child: Text(
+            question.question,
+            style: AppTheme.questionTextStyle,
+          ),
+        ),
+        const SizedBox(height: AppTheme.spaceM),
+        
+        // Sentence building area - enhanced
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(AppTheme.spaceM),
+          decoration: AppTheme.getQuestionTypeDecoration('sentence'),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.edit_note,
+                    size: 16,
+                    color: AppTheme.sentenceColor,
+                  ),
+                  const SizedBox(width: AppTheme.spaceXS),
+                  Text(
+                    'Your sentence:',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.sentenceColor,
+                    ),
+                  ),
+                  const Spacer(),
+                  if (_userSentenceWords.isNotEmpty && !_showExplanation)
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _userSentenceWords.clear();
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppTheme.spaceS,
+                          vertical: AppTheme.spaceXS,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade50,
+                          borderRadius: BorderRadius.circular(AppTheme.buttonRadius),
+                          border: Border.all(color: Colors.red.shade200),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.clear_all,
+                              size: 14,
+                              color: Colors.red.shade600,
+                            ),
+                            const SizedBox(width: AppTheme.spaceXS),
+                            Text(
+                              'Clear all',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.red.shade600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: AppTheme.spaceS),
+              Container(
+                width: double.infinity,
+                height: 80,
+                constraints: const BoxConstraints(minHeight: 80),
+                padding: const EdgeInsets.all(AppTheme.spaceS),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(AppTheme.buttonRadius),
+                  border: Border.all(
+                    color: _userSentenceWords.isEmpty 
+                        ? Colors.grey.shade300 
+                        : AppTheme.successColor.withValues(alpha: 0.3),
+                    width: 2,
+                  ),
+                ),
+                child: DragTarget<String>(
+                  onWillAcceptWithDetails: (data) => !_showExplanation && !_userSentenceWords.contains(data.data),
+                  onAcceptWithDetails: (data) {
+                    if (!_showExplanation && !_userSentenceWords.contains(data.data)) {
+                      setState(() {
+                        _userSentenceWords.add(data.data);
+                      });
+                    }
+                  },
+                  builder: (context, candidateData, rejectedData) {
+                    return _userSentenceWords.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.drag_indicator,
+                                  size: 32,
+                                  color: Colors.grey.shade400,
+                                ),
+                                const SizedBox(height: AppTheme.spaceS),
+                                Text(
+                                  'Drag words here to build your sentence',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade600,
+                                    fontSize: 14,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
+                          )
+                        : Wrap(
+                            spacing: AppTheme.spaceXS,
+                            runSpacing: AppTheme.spaceXS,
+                            alignment: WrapAlignment.start,
+                            children: _userSentenceWords.asMap().entries.map((entry) {
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: AppTheme.spaceXS),
+                                child: GestureDetector(
+                                  onTap: _showExplanation ? null : () {
+                                    setState(() {
+                                      _userSentenceWords.removeAt(entry.key);
+                                    });
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: AppTheme.spaceS,
+                                      vertical: AppTheme.spaceXS,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: _showExplanation 
+                                          ? (entry.value == correctWords[entry.key] 
+                                              ? AppTheme.successColor.withValues(alpha: 0.1)
+                                              : Colors.red.shade50)
+                                          : AppTheme.sentenceColor.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(AppTheme.buttonRadius),
+                                      border: Border.all(
+                                        color: _showExplanation 
+                                            ? (entry.value == correctWords[entry.key] 
+                                                ? AppTheme.successColor
+                                                : Colors.red.shade300)
+                                            : AppTheme.sentenceColor.withValues(alpha: 0.3),
+                                        width: 2,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          entry.value,
+                                          style: AppTheme.wordTextStyle.copyWith(
+                                            color: _showExplanation 
+                                                ? (entry.value == correctWords[entry.key] 
+                                                    ? AppTheme.successColor
+                                                    : Colors.red.shade700)
+                                                : AppTheme.sentenceColor,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        if (!_showExplanation) ...[
+                                          const SizedBox(width: AppTheme.spaceXS),
+                                          Icon(
+                                            Icons.close,
+                                            size: 14,
+                                            color: Colors.grey.shade600,
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          );
+                  },
+                ),
+              ),
+              if (_userSentenceWords.isNotEmpty && !_showExplanation) ...[
+                const SizedBox(height: AppTheme.spaceS),
+                Container(
+                  padding: const EdgeInsets.all(AppTheme.spaceS),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(AppTheme.buttonRadius),
+                    border: Border.all(color: Colors.blue.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        size: 16,
+                        color: Colors.blue.shade600,
+                      ),
+                      const SizedBox(width: AppTheme.spaceXS),
+                      Expanded(
+                        child: Text(
+                          'Tap any word to remove it from your sentence',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.blue.shade700,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: AppTheme.spaceM),
+        
+        // Available words - enhanced
+        Container(
+          padding: const EdgeInsets.all(AppTheme.spaceM),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade50,
+            borderRadius: BorderRadius.circular(AppTheme.buttonRadius),
+            border: Border.all(color: Colors.grey.shade200),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.library_add,
+                    size: 16,
+                    color: Colors.grey.shade600,
+                  ),
+                  const SizedBox(width: AppTheme.spaceXS),
+                  Text(
+                    'Available words:',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey.shade700,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppTheme.spaceS),
+              Wrap(
+                spacing: AppTheme.spaceXS,
+                runSpacing: AppTheme.spaceXS,
+                children: wordOptions.map((word) {
+                  final isUsed = _userSentenceWords.contains(word);
+                  final isCorrect = _showExplanation && correctWords.contains(word);
+                  
+                  return Opacity(
+                    opacity: isUsed ? 0.3 : 1.0,
+                    child: DraggableWordTile(
+                      word: word,
+                      isUsed: isUsed,
+                      isCorrect: _showExplanation && isCorrect,
+                      showResult: _showExplanation,
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCompactAnswerSection(TestQuestion question, bool isLastQuestion) {
+    return Container(
+      padding: AppTheme.getScreenPadding(),
+      margin: const EdgeInsets.all(AppTheme.spaceS),
+      decoration: AppTheme.questionCardDecoration,
+      child: Column(
+        children: [
+          // Explanation
+          if (_showExplanation && question.explanation != null) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(AppTheme.spaceM),
+              decoration: BoxDecoration(
+                color: AppTheme.warningColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(AppTheme.buttonRadius),
+                border: Border.all(
+                  color: AppTheme.warningColor.withValues(alpha: 0.3),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.lightbulb, 
+                    color: AppTheme.warningColor, 
+                    size: 20
+                  ),
+                  const SizedBox(width: AppTheme.spaceS),
+                  Expanded(
+                    child: Text(
+                      question.explanation!,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppTheme.warningColor,
+                        fontWeight: FontWeight.w600,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppTheme.spaceM),
+          ],
+
+          // Submit button
+          if (!_showExplanation) ...[
+            // Progress indicator for sentence building
+            if (question is SentenceBuildingQuestion || 
+                question is WordOrderQuestion) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(AppTheme.spaceS),
+                decoration: BoxDecoration(
+                  color: _isReadyToSubmit() 
+                      ? AppTheme.successColor.withValues(alpha: 0.1)
+                      : Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(AppTheme.buttonRadius),
+                  border: Border.all(
+                    color: _isReadyToSubmit() 
+                        ? AppTheme.successColor
+                        : Colors.grey.shade300,
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      _isReadyToSubmit() ? Icons.check_circle : Icons.pending,
+                      size: 16,
+                      color: _isReadyToSubmit() 
+                          ? AppTheme.successColor 
+                          : Colors.grey.shade600,
+                    ),
+                    const SizedBox(width: AppTheme.spaceXS),
+                    Text(
+                      _isReadyToSubmit() 
+                          ? 'Ready to submit!' 
+                          : 'Need ${_getRequiredWordCount() - _userSentenceWords.length} more word(s)',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: _isReadyToSubmit() 
+                            ? AppTheme.successColor 
+                            : Colors.grey.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppTheme.spaceS),
+            ],
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton.icon(
+                onPressed: _isReadyToSubmit() ? _submitAnswer : null,
+                icon: Icon(
+                  _isReadyToSubmit() ? Icons.check : Icons.lock,
+                  size: 20,
+                ),
+                label: Text(
+                  _isReadyToSubmit() ? 'Submit Answer' : 'Complete Sentence First', 
+                  style: const TextStyle(
+                    fontSize: 16, 
+                    fontWeight: FontWeight.w600
+                  )
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _isReadyToSubmit() 
+                      ? AppTheme.successColor 
+                      : Colors.grey.shade400,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppTheme.buttonRadius),
+                  ),
+                  elevation: _isReadyToSubmit() ? 2 : 0,
+                ),
+              ),
+            ),
+          ],
+
+          // Auto-advance indicator
+          if (_showExplanation) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(AppTheme.spaceM),
+              decoration: BoxDecoration(
+                color: AppTheme.successColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(AppTheme.buttonRadius),
+                border: Border.all(
+                  color: AppTheme.successColor.withValues(alpha: 0.3),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.schedule, 
+                    color: AppTheme.successColor, 
+                    size: 20
+                  ),
+                  const SizedBox(width: AppTheme.spaceS),
+                  Text(
+                    isLastQuestion 
+                        ? 'Test will finish...' 
+                        : 'Next question in 2 seconds...',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppTheme.successColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
 
-  Widget _buildAnswerSection(TestQuestion question, bool isLastQuestion) {
-    return Column(
-      children: [
-        // Explanation
-        if (_showExplanation && question.explanation != null) ...[
-          Container(
-            padding: const EdgeInsets.all(15),
-            decoration: BoxDecoration(
-              color: Colors.yellow.shade50,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Colors.yellow.shade200),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.lightbulb, color: Colors.orange.shade600),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    question.explanation!,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.orange.shade800,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-        ],
+  bool _isReadyToSubmit() {
+    final currentQuestion = widget.test.questions[_currentQuestionIndex];
+    
+    if (currentQuestion is SentenceBuildingQuestion || 
+        currentQuestion is WordOrderQuestion) {
+      final expectedLength = currentQuestion is SentenceBuildingQuestion 
+          ? (currentQuestion as SentenceBuildingQuestion).correctSentence.length 
+          : (currentQuestion as WordOrderQuestion).correctOrder.length;
+      final isReady = _userSentenceWords.length == expectedLength && expectedLength > 0;
+      
+      return isReady;
+    } else {
+      return _selectedAnswer != null;
+    }
+  }
 
-        // Submit button (only visible before answering)
-        if (!_showExplanation) ...[
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _selectedAnswer == null ? null : _submitAnswer,
-              icon: const Icon(Icons.check),
-              label: const Text('Submit Answer'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 15),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(25),
-                ),
-                elevation: 3,
-              ),
-            ),
-          ),
-        ],
-
-        // Auto-advance indicator (visible after answering)
-        if (_showExplanation) ...[
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(15),
-            decoration: BoxDecoration(
-              color: Colors.green.shade50,
-              borderRadius: BorderRadius.circular(25),
-              border: Border.all(color: Colors.green.shade200),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.schedule, color: Colors.green.shade600),
-                const SizedBox(width: 8),
-                Text(
-                  isLastQuestion ? 'Test will finish...' : 'Next question in 2 seconds...',
-                  style: TextStyle(
-                    color: Colors.green.shade700,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ],
-    );
+  int _getRequiredWordCount() {
+    final currentQuestion = widget.test.questions[_currentQuestionIndex];
+    
+    if (currentQuestion is SentenceBuildingQuestion) {
+      return currentQuestion.correctSentence.length;
+    } else if (currentQuestion is WordOrderQuestion) {
+      return currentQuestion.correctOrder.length;
+    }
+    return 0;
   }
 
   void _submitAnswer() {
@@ -533,490 +1460,12 @@ class _TestScreenState extends State<TestScreen> {
         _showExplanation = false;
         _userSentenceWords.clear();
         _availableWords.clear();
+
       });
     } else {
       // Test completed
       widget.onTestComplete();
     }
-  }
-
-  // Fill in the Blank Question
-  Widget _buildFillInBlankQuestion(FillInBlankQuestion question) {
-    return Card(
-      elevation: 8,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Padding(
-        padding: const EdgeInsets.all(25),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              question.question,
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                color: Colors.green,
-              ),
-            ),
-            const SizedBox(height: 30),
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.yellow.shade50,
-                borderRadius: BorderRadius.circular(15),
-                border: Border.all(color: Colors.yellow.shade200),
-              ),
-              child: Column(
-                children: [
-                  Text(
-                    question.sentence.replaceAll('___', '_____'),
-                    style: const TextStyle(
-                      fontSize: 18,
-                      color: Colors.black87,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 20),
-                  const Text(
-                    'Select the missing word:',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.grey,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 30),
-            Expanded(
-              child: ListView.builder(
-                itemCount: question.options.length,
-                itemBuilder: (context, index) {
-                  final option = question.options[index];
-                  final isSelected = _selectedAnswer == option;
-                  final isCorrect = option == question.correctWord;
-                  
-                  Color buttonColor = Colors.grey.shade100;
-                  if (_showExplanation) {
-                    if (isCorrect) {
-                      buttonColor = Colors.green.shade100;
-                    } else if (isSelected && !isCorrect) {
-                      buttonColor = Colors.red.shade100;
-                    }
-                  } else if (isSelected) {
-                    buttonColor = Colors.yellow.shade100;
-                  }
-
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    child: ElevatedButton(
-                      onPressed: _showExplanation ? null : () {
-                        setState(() {
-                          _selectedAnswer = option;
-                        });
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: buttonColor,
-                        foregroundColor: Colors.black87,
-                        padding: const EdgeInsets.all(16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        elevation: _showExplanation ? 0 : 2,
-                      ),
-                      child: Text(
-                        option,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Listening Question
-  Widget _buildListeningQuestion(ListeningQuestion question) {
-    return Card(
-      elevation: 8,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Padding(
-        padding: const EdgeInsets.all(25),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              question.question,
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                color: Colors.green,
-              ),
-            ),
-            const SizedBox(height: 30),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(30),
-              decoration: BoxDecoration(
-                color: Colors.yellow.shade50,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.yellow.shade200),
-              ),
-              child: Column(
-                children: [
-                  Icon(
-                    Icons.volume_up,
-                    size: 60,
-                    color: Colors.green.shade600,
-                  ),
-                  const SizedBox(height: 20),
-                  ElevatedButton.icon(
-                    onPressed: () => _ttsService.speak(question.audioText, 'en'),
-                    icon: const Icon(Icons.play_arrow),
-                    label: const Text('Play Audio'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 30,
-                        vertical: 15,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  const Text(
-                    'What did you hear?',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 30),
-            Expanded(
-              child: ListView.builder(
-                itemCount: question.options.length,
-                itemBuilder: (context, index) {
-                  final option = question.options[index];
-                  final isSelected = _selectedAnswer == option;
-                  final isCorrect = index == question.correctAnswerIndex;
-                  
-                  Color buttonColor = Colors.grey.shade100;
-                  if (_showExplanation) {
-                    if (isCorrect) {
-                      buttonColor = Colors.green.shade100;
-                    } else if (isSelected && !isCorrect) {
-                      buttonColor = Colors.red.shade100;
-                    }
-                  } else if (isSelected) {
-                    buttonColor = Colors.yellow.shade100;
-                  }
-
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    child: ElevatedButton(
-                      onPressed: _showExplanation ? null : () {
-                        setState(() {
-                          _selectedAnswer = option;
-                        });
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: buttonColor,
-                        foregroundColor: Colors.black87,
-                        padding: const EdgeInsets.all(16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        elevation: _showExplanation ? 0 : 2,
-                      ),
-                      child: Text(
-                        option,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Sentence Building Question
-  Widget _buildSentenceBuildingQuestion(SentenceBuildingQuestion question) {
-    return Card(
-      elevation: 8,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Padding(
-        padding: const EdgeInsets.all(25),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              question.question,
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                color: Colors.green,
-              ),
-            ),
-            const SizedBox(height: 30),
-            
-            // Available words to build sentence
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.yellow.shade50,
-                borderRadius: BorderRadius.circular(15),
-                border: Border.all(color: Colors.yellow.shade200),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Available words:',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.green,
-                    ),
-                  ),
-                  const SizedBox(height: 15),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: question.wordOptions.map((word) {
-                      final isUsed = _userSentenceWords.contains(word);
-                      return ElevatedButton(
-                        onPressed: _showExplanation || isUsed ? null : () {
-                          setState(() {
-                            _userSentenceWords.add(word);
-                          });
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: isUsed ? Colors.grey.shade300 : Colors.green.shade100,
-                          foregroundColor: Colors.black87,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                        ),
-                        child: Text(word),
-                      );
-                    }).toList(),
-                  ),
-                ],
-              ),
-            ),
-            
-            const SizedBox(height: 20),
-            
-            // Built sentence
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.green.shade50,
-                borderRadius: BorderRadius.circular(15),
-                border: Border.all(color: Colors.green.shade200),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Your sentence:',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.green,
-                    ),
-                  ),
-                  const SizedBox(height: 15),
-                  Container(
-                    width: double.infinity,
-                    height: 60,
-                    padding: const EdgeInsets.all(15),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.grey.shade300),
-                    ),
-                    child: _userSentenceWords.isEmpty
-                        ? const Text(
-                            'Tap words above to build your sentence',
-                            style: TextStyle(
-                              fontStyle: FontStyle.italic,
-                              color: Colors.grey,
-                            ),
-                          )
-                        : Wrap(
-                            children: _userSentenceWords.asMap().entries.map((entry) {
-                              return Padding(
-                                padding: const EdgeInsets.only(right: 8, bottom: 8),
-                                child: ElevatedButton(
-                                  onPressed: _showExplanation ? null : () {
-                                    setState(() {
-                                      _userSentenceWords.removeAt(entry.key);
-                                    });
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.yellow.shade100,
-                                    foregroundColor: Colors.black87,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 6,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(15),
-                                    ),
-                                  ),
-                                  child: Text(entry.value),
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Word Order Question
-  Widget _buildWordOrderQuestion(WordOrderQuestion question) {
-    return Card(
-      elevation: 8,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Padding(
-        padding: const EdgeInsets.all(25),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              question.question,
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                color: Colors.green,
-              ),
-            ),
-            const SizedBox(height: 30),
-            
-            // Scrambled words to arrange
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.yellow.shade50,
-                borderRadius: BorderRadius.circular(15),
-                border: Border.all(color: Colors.yellow.shade200),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Arrange these words in the correct order:',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.green,
-                    ),
-                  ),
-                  const SizedBox(height: 15),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: question.scrambledWords.map((word) {
-                      return ElevatedButton(
-                        onPressed: _showExplanation ? null : () {
-                          setState(() {
-                            _userSentenceWords.add(word);
-                          });
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green.shade100,
-                          foregroundColor: Colors.black87,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 10,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                        ),
-                        child: Text(word),
-                      );
-                    }).toList(),
-                  ),
-                ],
-              ),
-            ),
-            
-            const SizedBox(height: 20),
-            
-            // Correct order preview (shown after answering)
-            if (_showExplanation) ...[
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.green.shade50,
-                  borderRadius: BorderRadius.circular(15),
-                  border: Border.all(color: Colors.green.shade200),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Correct order:',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.green,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      question.correctOrder.join(' '),
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.green,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
   }
 
   @override
